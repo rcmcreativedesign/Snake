@@ -1,4 +1,6 @@
-DECLARE SUB DrawMessage (Line1$, Line2$)
+DECLARE SUB DrawMessage (Lines$())
+DECLARE FUNCTION TRIM$ (VAL$)
+
 DECLARE SUB DrawStatusBar (Level%)
 DECLARE SUB MoveRight ()
 DECLARE SUB MoveLeft ()
@@ -22,7 +24,7 @@ COLOR 2
 CONST FALSE = 0, TRUE = NOT FALSE
 DIM SHARED PlayField(400) AS INTEGER
 
-DIM SHARED MaxCells%, TopEdge%, LowerEdge%, CurrentCell%, FoodCount%, GameOver, GameStarted
+DIM SHARED MaxCells%, TopEdge%, LowerEdge%, CurrentCell%, CurrentLevel%, FoodCount%, GameOver, GameStarted
 MaxCells% = UBOUND(PlayField)
 TopEdge% = SQR(MaxCells%)
 LowerEdge% = MaxCells% - TopEdge%
@@ -45,7 +47,10 @@ PRINT "  V  "
 PRINT
 PRINT
 
-CALL DrawMessage("PRESS ENTER TO", "START")
+DIM Message1$(7)
+Message1$(1) = "PRESS ENTER TO"
+Message1$(2) = "START"
+CALL DrawMessage(Message1$())
 
 CALL DrawStatusBar(CurrentLevel%)
 
@@ -72,6 +77,7 @@ SELECT CASE K$
 	CASE CHR$(27) 'ESC
 		END
 END SELECT
+DrawStatusBar (CurrentLevel%)
 GOTO REKEY
 
 SUB CheckCollision (Cell%, PrevCell%)
@@ -104,15 +110,18 @@ SUB DrawField
 	NEXT X
 END SUB
 
-SUB DrawMessage (Line1$, Line2$)
-	LOCATE 12, 1: PRINT Line1$
-	LOCATE 13, 1: PRINT Line2$
+SUB DrawMessage (Lines$())
+	FOR X = 1 TO UBOUND(Lines$)
+		LOCATE 11 + X, 1: PRINT LEFT$(Lines$(X) + STRING$(16, " "), 16)
+	NEXT X
+	REM LOCATE 12, 1: PRINT LEFT$(Line1$ + STRING$(16, " "), 16)
+	REM LOCATE 13, 1: PRINT LEFT$(Line2$ + STRING$(16, " "), 16)
 END SUB
 
 SUB DrawStatusBar (Level%)
-	LOCATE 22, 1: PRINT "LEVEL "; Level%;
+	LOCATE 22, 1: PRINT "LEVEL "; TRIM$(STR$(Level%));
 	IF GameStarted = TRUE THEN
-		PRINT ", FOOD REMAINING "; GetFoodLevel(Level%) - FoodCount%
+		PRINT ", FOOD REMAINING "; LEFT$(TRIM$(STR$(GetFoodLevel(Level%) - FoodCount%)) + STRING$(2, " "), 2)
 	END IF
 END SUB
 
@@ -176,9 +185,11 @@ FUNCTION IsHighScore
 END FUNCTION
 
 FUNCTION IsLeftEdge (Cell%)
-	NewString$ = LTRIM$(STR$(Cell%))
+	NewString$ = RTRIM$(LTRIM$(STR$(Cell%)))
 	LastDigit$ = RIGHT$(NewString$, 1)
 	IF VAL(LastDigit$) <> 1 THEN
+		IsLeftEdge = FALSE
+	ELSEIF LEN(NewString$) = 1 THEN
 		IsLeftEdge = FALSE
 	ELSE
 		FirstDigits$ = LEFT$(NewString$, LEN(NewString$) - 1)
@@ -191,9 +202,11 @@ FUNCTION IsLeftEdge (Cell%)
 END FUNCTION
 
 FUNCTION IsRightEdge (Cell%)
-	NewString$ = LTRIM$(STR$(Cell%))
+	NewString$ = RTRIM$(LTRIM$(STR$(Cell%)))
 	LastDigit$ = RIGHT$(NewString$, 1)
 	IF VAL(LastDigit$) <> 0 THEN
+		IsRightEdge = FALSE
+	ELSEIF LEN(NewString) = 1 THEN
 		IsRightEdge = FALSE
 	ELSE
 		FirstDigits$ = LEFT$(NewString$, LEN(NewString$) - 1)
@@ -207,7 +220,7 @@ END FUNCTION
 
 SUB MoveDown
 	IF GameStarted = TRUE THEN
-		IF CurrentCell% <= TopEdge% THEN
+		IF CurrentCell% >= LowerEdge% THEN
 			ShowError ("Can't Move There")
 		ELSE
 			PreviousCell% = CurrentCell%
@@ -223,7 +236,7 @@ END SUB
 
 SUB MoveLeft
 	IF GameStarted = TRUE THEN
-		IF IsLeftEdge(CurrentCell%) THEN
+		IF IsLeftEdge(CurrentCell% - 1) THEN
 			ShowError ("Can't Move There")
 		ELSE
 			PreviousCell% = CurrentCell%
@@ -239,7 +252,7 @@ END SUB
 
 SUB MoveRight
 	IF GameStarted = TRUE THEN
-		IF IsRightEdge(CurrentCell%) THEN
+		IF IsRightEdge(CurrentCell% + 1) THEN
 			ShowError ("Can't Move There")
 		ELSE
 			PreviousCell% = CurrentCell%
@@ -255,7 +268,7 @@ END SUB
 
 SUB MoveUp
 	IF GameStarted = TRUE THEN
-		IF CurrentCell% >= LowerEdge% THEN
+		IF CurrentCell% <= TopEdge% THEN
 			ShowError ("Can't Move There")
 		ELSE
 			PreviousCell% = CurrentCell%
@@ -270,12 +283,21 @@ SUB MoveUp
 END SUB
 
 SUB ShowError (Message$)
-	CALL DrawMessage(Message$, "")
+	DIM MessageArray$(7)
+	MessageArray$(1) = Message$
+    CALL DrawMessage(MessageArray$F())
 END SUB
 
 SUB Start
 	GameStarted = TRUE
-	CALL DrawMessage("PRESS ESC TO", "EXIT")
+	DIM Message2$(7)
+	Message2$(1) = "PRESS ESC TO"
+	Message2$(2) = "EXIT"
+	CALL DrawMessage(Message2$())
 	CALL DrawStatusBar(1)
 END SUB
+
+FUNCTION TRIM$ (VAL$)
+	TRIM$ = RTRIM$(LTRIM$(VAL$))
+END FUNCTION
 
