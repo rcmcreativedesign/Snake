@@ -1,5 +1,5 @@
-DECLARE SUB DrawMessage (Lines$())
-DECLARE FUNCTION TRIM$ (VAL$)
+DECLARE SUB DrawMessage (Message$)
+DECLARE FUNCTION TRIM$ (Val$)
 
 DECLARE SUB DrawStatusBar (Level%)
 DECLARE SUB MoveRight ()
@@ -47,10 +47,7 @@ PRINT "  V  "
 PRINT
 PRINT
 
-DIM Message1$(7)
-Message1$(1) = "PRESS ENTER TO"
-Message1$(2) = "START"
-CALL DrawMessage(Message1$())
+CALL DrawMessage("PRESS ENTER TO START")
 
 CALL DrawStatusBar(CurrentLevel%)
 
@@ -80,19 +77,19 @@ END SELECT
 DrawStatusBar (CurrentLevel%)
 GOTO REKEY
 
-SUB CheckCollision (Cell%, PrevCell%)
+SUB CheckCollision (NextCell%, CurrCell%)
 	REM Did we hit a body part?
-	IF PlayField(Cell%) = ASC("B") THEN
+	IF PlayField(NextCell%) = ASC("B") THEN
 		GameOver = TRUE
 		ShowError ("GAME OVER!")
-	ELSEIF PlayField(Cell%) = ASC("X") THEN
+	ELSEIF PlayField(NextCell%) = ASC("X") THEN
 		REM We hit food
-		PlayField(Cell%) = ASC("S")
-		PlayField(PrevCell%) = ASC("B")
+		PlayField(NextCell%) = ASC("S")
+		PlayField(CurrCell%) = ASC("B")
 		FoodCount% = FoodCount% + 1
 	ELSE
-		PlayField(Cell%) = ASC("S")
-		PlayField(PrevCell%) = 177 'Back to "grass"
+		PlayField(NextCell%) = ASC("S")
+		PlayField(CurrCell%) = 177 'Back to "grass"
 	END IF
 END SUB
 
@@ -110,12 +107,48 @@ SUB DrawField
 	NEXT X
 END SUB
 
-SUB DrawMessage (Lines$())
-	FOR X = 1 TO UBOUND(Lines$)
-		LOCATE 11 + X, 1: PRINT LEFT$(Lines$(X) + STRING$(16, " "), 16)
-	NEXT X
-	REM LOCATE 12, 1: PRINT LEFT$(Line1$ + STRING$(16, " "), 16)
-	REM LOCATE 13, 1: PRINT LEFT$(Line2$ + STRING$(16, " "), 16)
+SUB DrawMessage (Message$)
+	IF INSTR(1, Message$, " ") = 0 THEN
+		IF LEN(Message$) <= 16 THEN
+			LOCATE 12, 1: PRINT Message$
+		ELSE
+		   REM CurrentLine = 12
+		   REM FOR X = 0 TO 7
+		END IF
+	ELSE
+		LineNumber = 12
+		Index = 1
+		CurrWord$ = ""
+		LineWord$ = ""
+		FOR X = 1 TO LEN(Message$)
+			IF MID$(Message$, X, 1) = " " THEN
+				IF LEN(LineWord$ + " " + CurrWord$) > 16 THEN
+					LOCATE LineNumber, 1: PRINT LEFT$(LTRIM$(LineWord$) + STRING$(16, " "), 16)
+					LineWord$ = CurrWord$
+					CurrWord$ = ""
+					LineNumber = LineNumber + 1
+				ELSE
+					LineWord$ = LineWord$ + " " + CurrWord$
+					CurrWord$ = ""
+				END IF
+			ELSE
+				CurrWord$ = CurrWord$ + MID$(Message$, X, 1)
+			END IF
+		NEXT X
+		IF LEN(LineWord$ + " " + CurrWord$) > 16 THEN
+			LOCATE LineNumber, 1: PRINT LEFT$(LTRIM$(LineWord$) + STRING$(16, " "), 16)
+			LineNumber = LineNumber + 1
+			LOCATE LineNumber, 1: PRINT LEFT$(CurrWord$ + STRING$(16, " "), 16)
+		ELSE
+			LOCATE LineNumber, 1: PRINT LEFT$(LTRIM$(LineWord$ + " " + CurrWord$) + STRING$(16, " "), 16)
+		END IF
+		LineNumber = LineNumber + 1
+	END IF
+	IF LineNumber < 17 THEN
+		FOR X = LineNumber TO 17
+			LOCATE X, 1: PRINT STRING$(16, " ")
+		NEXT X
+	END IF
 END SUB
 
 SUB DrawStatusBar (Level%)
@@ -255,9 +288,8 @@ SUB MoveRight
 		IF IsRightEdge(CurrentCell% + 1) THEN
 			ShowError ("Can't Move There")
 		ELSE
-			PreviousCell% = CurrentCell%
-			CurrentCell% = CurrentCell% + 1
-			CALL CheckCollision(CurrentCell%, PreviousCell%)
+			NextCell% = CurrentCell% + 1
+			CALL CheckCollision(NextCell%, CurrentCell%)
 			IF GameOver = FALSE THEN
 				PlayField(CurrentCell%) = ASC("S")
 				CALL DrawField
@@ -283,21 +315,16 @@ SUB MoveUp
 END SUB
 
 SUB ShowError (Message$)
-	DIM MessageArray$(7)
-	MessageArray$(1) = Message$
-    CALL DrawMessage(MessageArray$F())
+	CALL DrawMessage(Message$)
 END SUB
 
 SUB Start
 	GameStarted = TRUE
-	DIM Message2$(7)
-	Message2$(1) = "PRESS ESC TO"
-	Message2$(2) = "EXIT"
-	CALL DrawMessage(Message2$())
+	CALL DrawMessage("PRESS ESC TO EXIT")
 	CALL DrawStatusBar(1)
 END SUB
 
-FUNCTION TRIM$ (VAL$)
-	TRIM$ = RTRIM$(LTRIM$(VAL$))
+FUNCTION TRIM$ (Val$)
+	TRIM$ = RTRIM$(LTRIM$(Val$))
 END FUNCTION
 
