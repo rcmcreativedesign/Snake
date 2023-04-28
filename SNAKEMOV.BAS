@@ -1,21 +1,14 @@
 DECLARE SUB DrawMessage (Message$)
-DECLARE FUNCTION TRIM$ (Val$)
-
-DECLARE SUB DrawStatusBar (Level%)
+DECLARE SUB DrawField ()
 DECLARE SUB MoveRight ()
 DECLARE SUB MoveLeft ()
 DECLARE SUB MoveDown ()
 DECLARE SUB MoveUp ()
-DECLARE SUB Start ()
-DECLARE SUB CheckCollision (Cell%, PrevCell%)
-DECLARE SUB ShowError (Message$)
-DECLARE FUNCTION IsHighScore! ()
 DECLARE FUNCTION IsEdge! (Cell%, TopEdge%, LowerEdge%)
-DECLARE FUNCTION IsRightEdge! (Cell%)
 DECLARE FUNCTION IsLeftEdge! (Cell%)
-DECLARE FUNCTION GetFoodLevel! (Level%)
-DECLARE SUB DrawField ()
-DECLARE SUB InitField (Level%, MaxCells%)
+DECLARE FUNCTION IsRightEdge! (Cell%)
+DECLARE SUB ShowError (Message$)
+DECLARE FUNCTION TRIM$ (Val$)
 
 CLS
 SCREEN 13
@@ -23,19 +16,18 @@ COLOR 2
 
 CONST FALSE = 0, TRUE = NOT FALSE
 DIM SHARED PlayField(1 TO 400) AS INTEGER
-DIM SHARED SnakeSegments(1 TO 25) AS INTEGER
 
+DIM Player AS INTEGER
 DIM SHARED MaxCells%, TopEdge%, LowerEdge%, CurrentCell%, CurrentLevel%, FoodCount%, GameOver, GameStarted
 MaxCells% = UBOUND(PlayField)
 TopEdge% = SQR(MaxCells%)
 LowerEdge% = MaxCells% - TopEdge%
 CurrentCell% = 1
-CurrentLevel% = 1
-FoodCount% = 0
-GameOver = FALSE
-GameStarted = FALSE
 
-CALL InitField(CurrentLevel%, MaxCells%)
+REM Fill all cells with "grass"
+FOR X = 1 TO MaxCells%
+	PlayField(X) = 177
+NEXT X
 
 LOCATE 2, 1: PRINT "WELCOME TO SNAKE"
 PRINT
@@ -50,8 +42,6 @@ PRINT
 
 CALL DrawMessage("PRESS ENTER TO START")
 
-CALL DrawStatusBar(CurrentLevel%)
-
 CALL DrawField
 
 LOCATE 20, 1
@@ -60,9 +50,7 @@ REKEY:
 DO
 	K$ = INKEY$
 LOOP UNTIL K$ <> ""
-
-CALL DrawMessage(" ")
-
+   
 SELECT CASE K$
 	CASE CHR$(0) + CHR$(77)
 		CALL MoveRight
@@ -72,30 +60,10 @@ SELECT CASE K$
 		CALL MoveDown
 	CASE CHR$(0) + CHR$(72)
 		CALL MoveUp
-	CASE CHR$(13) 'Enter
-		CALL Start
 	CASE CHR$(27) 'ESC
 		END
 END SELECT
-DrawStatusBar (CurrentLevel%)
 GOTO REKEY
-
-SUB CheckCollision (CurrCell%, PrevCell%)
-	REM Did we hit a body part?
-	IF PlayField(CurrCell%) = ASC("B") THEN
-		GameOver = TRUE
-		ShowError ("GAME OVER!")
-	ELSEIF PlayField(CurrCell%) = ASC("X") THEN
-		REM We hit food
-		PlayField(CurrCell%) = ASC("S")
-		PlayField(PrevCell%) = ASC("B")
-		FoodCount% = FoodCount% + 1
-		SnakeSegments(FoodCount%) = CurrCell%
-	ELSE
-		PlayField(CurrCell%) = ASC("S")
-		PlayField(PrevCell%) = 177 'Back to "grass"
-	END IF
-END SUB
 
 SUB DrawField
 	Cell% = 1
@@ -152,50 +120,6 @@ SUB DrawMessage (Message$)
 	END IF
 END SUB
 
-SUB DrawStatusBar (Level%)
-	LOCATE 22, 1: PRINT "LEVEL "; TRIM$(STR$(Level%));
-	IF GameStarted = TRUE THEN
-		PRINT ", FOOD REMAINING "; LEFT$(TRIM$(STR$(GetFoodLevel(Level%) - FoodCount%)) + STRING$(2, " "), 2)
-	END IF
-END SUB
-
-FUNCTION GetFoodLevel (Level%)
-	IF Level% < 6 THEN
-		GetFoodLevel = 10
-	ELSEIF Level% < 11 THEN
-		GetFoodLevel = 15
-	ELSEIF Level% < 21 THEN
-		GetFoodLevel = 20
-	ELSE
-		GetFoodLevel = 25
-	END IF
-END FUNCTION
-
-SUB InitField (Level%, MaxCells%)
-	RANDOMIZE TIMER
-
-	REM Fill all cells with "grass"
-	FOR X% = 1 TO MaxCells%
-		PlayField(X%) = 177
-	NEXT X%
-   
-	REM Add food to field
-	Food% = GetFoodLevel(Level%)
-	FOR X% = 1 TO Food%
-		PlayField(INT(RND * MaxCells%) + 1) = ASC("X")
-	NEXT X%
-
-	REM Add snake head
-	Break = FALSE
-	DO
-		CurrentCell% = INT(RND * MaxCells%) + 1
-		IF IsEdge(CurrentCell%, TopEdge%, LowerEdge%) = TRUE THEN
-			PlayField(CurrentCell%) = ASC("S")
-			Break = TRUE
-		END IF
-	LOOP WHILE Break = FALSE
-END SUB
-
 FUNCTION IsEdge (Cell%, TopEdge%, LowerEdge%)
 	IF Cell% <= TopEdge% THEN
 		IsEdge = TRUE
@@ -212,10 +136,6 @@ FUNCTION IsEdge (Cell%, TopEdge%, LowerEdge%)
 			END IF
 		END IF
 	END IF
-END FUNCTION
-
-FUNCTION IsHighScore
-
 END FUNCTION
 
 FUNCTION IsLeftEdge (Cell%)
@@ -249,77 +169,51 @@ FUNCTION IsRightEdge (Cell%)
 END FUNCTION
 
 SUB MoveDown
-	IF GameStarted = TRUE THEN
-		IF CurrentCell% >= LowerEdge% THEN
-			ShowError ("Can't Move There")
-		ELSE
-			PreviousCell% = CurrentCell%
-			CurrentCell% = CurrentCell% + TopEdge%
-			CALL CheckCollision(CurrentCell%, PreviousCell%)
-			IF GameOver = FALSE THEN
-				PlayField(CurrentCell%) = ASC("S")
-				CALL DrawField
-			END IF
-		END IF
+	IF CurrentCell% >= LowerEdge% THEN
+		ShowError ("Can't Move There")
+	ELSE
+		PlayField(CurrentCell%) = 177
+		CurrentCell% = CurrentCell% + TopEdge%
+		PlayField(CurrentCell%) = ASC("S")
+		CALL DrawField
 	END IF
 END SUB
 
 SUB MoveLeft
-	IF GameStarted = TRUE THEN
-		IF IsLeftEdge(CurrentCell%) = TRUE THEN
-			ShowError ("Can't Move There")
-		ELSE
-			PreviousCell% = CurrentCell%
-			CurrentCell% = CurrentCell% - 1
-			CALL CheckCollision(CurrentCell%, PreviousCell%)
-			IF GameOver = FALSE THEN
-				PlayField(CurrentCell%) = ASC("S")
-				CALL DrawField
-			END IF
-		END IF
+	IF IsLeftEdge(CurrentCell% - 1) = TRUE THEN
+		ShowError ("Can't Move There")
+	ELSE
+		PlayField(CurrentCell%) = 177
+		CurrentCell% = CurrentCell% - 1
+		PlayField(CurrentCell%) = ASC("S")
+		CALL DrawField
 	END IF
 END SUB
 
 SUB MoveRight
-	IF GameStarted = TRUE THEN
-		IF IsRightEdge(CurrentCell%) = TRUE THEN
-			ShowError ("Can't Move There")
-		ELSE
-			PreviousCell% = CurrentCell%
-			CurrentCell% = CurrentCell% + 1
-			CALL CheckCollision(CurrentCell%, PreviousCell%)
-			IF GameOver = FALSE THEN
-				PlayField(CurrentCell%) = ASC("S")
-				CALL DrawField
-			END IF
-		END IF
+	IF IsRightEdge(CurrentCell% + 1) = TRUE THEN
+		ShowError ("Can't Move There")
+	ELSE
+		PlayField(CurrentCell%) = 177
+		CurrentCell% = CurrentCell% + 1
+		PlayField(CurrentCell%) = ASC("S")
+		CALL DrawField
 	END IF
 END SUB
 
 SUB MoveUp
-	IF GameStarted = TRUE THEN
-		IF CurrentCell% <= TopEdge% THEN
-			ShowError ("Can't Move There")
-		ELSE
-			PreviousCell% = CurrentCell%
-			CurrentCell% = CurrentCell% - TopEdge%
-			CALL CheckCollision(CurrentCell%, PreviousCell%)
-			IF GameOver = FALSE THEN
-				PlayField(CurrentCell%) = ASC("S")
-				CALL DrawField
-			END IF
-		END IF
+	IF CurrentCell% <= TopEdge% THEN
+		ShowError ("Can't Move There")
+	ELSE
+		PlayField(CurrentCell%) = 177
+		CurrentCell% = CurrentCell% - TopEdge%
+		PlayField(CurrentCell%) = ASC("S")
+		CALL DrawField
 	END IF
 END SUB
 
 SUB ShowError (Message$)
 	CALL DrawMessage(Message$)
-END SUB
-
-SUB Start
-	GameStarted = TRUE
-	CALL DrawMessage("PRESS ESC TO EXIT")
-	CALL DrawStatusBar(1)
 END SUB
 
 FUNCTION TRIM$ (Val$)
