@@ -1,3 +1,4 @@
+DECLARE SUB StartNextLevel (CurrentLevel%)
 DECLARE SUB DrawMessage (Message$)
 DECLARE FUNCTION TRIM$ (Val$)
 
@@ -77,24 +78,29 @@ SELECT CASE K$
 	CASE CHR$(27) 'ESC
 		END
 END SELECT
-DrawStatusBar (CurrentLevel%)
+CALL DrawStatusBar(CurrentLevel%)
 GOTO REKEY
 
 SUB CheckCollision (CurrCell%, PrevCell%)
-	REM Did we hit a body part?
+	'REM Did we hit a body part?
 	IF PlayField(CurrCell%) = ASC("B") THEN
 		GameOver = TRUE
-		ShowError ("GAME OVER!")
+		ShowError ("GAME OVER! PRESS ENTER TO START A NEW GAME")
 	ELSEIF PlayField(CurrCell%) = ASC("X") THEN
-		REM We hit food
+		'REM We hit food
 		PlayField(CurrCell%) = ASC("S")
 		PlayField(PrevCell%) = ASC("B")
 		FoodCount% = FoodCount% + 1
 		SnakeSegments(FoodCount%) = CurrCell%
+		IF FoodCount% = GetFoodLevel(CurrentLevel%) THEN
+			CurrentLevel% = CurrentLevel% + 1
+			CALL StartNextLevel(CurrentLevel%)
+		END IF
 	ELSE
 		PlayField(CurrCell%) = ASC("S")
 		PlayField(PrevCell%) = 177 'Back to "grass"
 	END IF
+	CALL DrawField
 END SUB
 
 SUB DrawField
@@ -174,18 +180,18 @@ END FUNCTION
 SUB InitField (Level%, MaxCells%)
 	RANDOMIZE TIMER
 
-	REM Fill all cells with "grass"
+	'REM Fill all cells with "grass"
 	FOR X% = 1 TO MaxCells%
 		PlayField(X%) = 177
 	NEXT X%
    
-	REM Add food to field
+	'REM Add food to field
 	Food% = GetFoodLevel(Level%)
 	FOR X% = 1 TO Food%
 		PlayField(INT(RND * MaxCells%) + 1) = ASC("X")
 	NEXT X%
 
-	REM Add snake head
+	'REM Add snake head
 	Break = FALSE
 	DO
 		CurrentCell% = INT(RND * MaxCells%) + 1
@@ -194,6 +200,11 @@ SUB InitField (Level%, MaxCells%)
 			Break = TRUE
 		END IF
 	LOOP WHILE Break = FALSE
+
+	'REM Clear snake body
+	FOR X = 1 TO 25
+		SnakeSegments(X) = 0
+	NEXT X
 END SUB
 
 FUNCTION IsEdge (Cell%, TopEdge%, LowerEdge%)
@@ -256,11 +267,13 @@ SUB MoveDown
 			PreviousCell% = CurrentCell%
 			CurrentCell% = CurrentCell% + TopEdge%
 			CALL CheckCollision(CurrentCell%, PreviousCell%)
-			IF GameOver = FALSE THEN
-				PlayField(CurrentCell%) = ASC("S")
-				CALL DrawField
-			END IF
+			' IF GameOver = FALSE THEN
+			'   PlayField(CurrentCell%) = ASC("S")
+			'   CALL DrawField
+			' END IF
 		END IF
+	ELSE
+		CALL DrawMessage("PRESS ENTER TO START")
 	END IF
 END SUB
 
@@ -272,11 +285,13 @@ SUB MoveLeft
 			PreviousCell% = CurrentCell%
 			CurrentCell% = CurrentCell% - 1
 			CALL CheckCollision(CurrentCell%, PreviousCell%)
-			IF GameOver = FALSE THEN
-				PlayField(CurrentCell%) = ASC("S")
-				CALL DrawField
-			END IF
+			' IF GameOver = FALSE THEN
+			'   PlayField(CurrentCell%) = ASC("S")
+			'   CALL DrawField
+			' END IF
 		END IF
+	ELSE
+		CALL DrawMessage("PRESS ENTER TO START")
 	END IF
 END SUB
 
@@ -288,11 +303,13 @@ SUB MoveRight
 			PreviousCell% = CurrentCell%
 			CurrentCell% = CurrentCell% + 1
 			CALL CheckCollision(CurrentCell%, PreviousCell%)
-			IF GameOver = FALSE THEN
-				PlayField(CurrentCell%) = ASC("S")
-				CALL DrawField
-			END IF
+			' IF GameOver = FALSE THEN
+			'   PlayField(CurrentCell%) = ASC("S")
+			'   CALL DrawField
+			' END IF
 		END IF
+	ELSE
+		CALL DrawMessage("PRESS ENTER TO START")
 	END IF
 END SUB
 
@@ -304,11 +321,13 @@ SUB MoveUp
 			PreviousCell% = CurrentCell%
 			CurrentCell% = CurrentCell% - TopEdge%
 			CALL CheckCollision(CurrentCell%, PreviousCell%)
-			IF GameOver = FALSE THEN
-				PlayField(CurrentCell%) = ASC("S")
-				CALL DrawField
-			END IF
+			' IF GameOver = FALSE THEN
+			'   PlayField(CurrentCell%) = ASC("S")
+			'   CALL DrawField
+			' END IF
 		END IF
+	ELSE
+		CALL DrawMessage("PRESS ENTER TO START")
 	END IF
 END SUB
 
@@ -317,9 +336,29 @@ SUB ShowError (Message$)
 END SUB
 
 SUB Start
-	GameStarted = TRUE
-	CALL DrawMessage("PRESS ESC TO EXIT")
-	CALL DrawStatusBar(1)
+	'Check if game is already started
+	IF GameStarted = TRUE THEN
+		IF GameOver = TRUE THEN
+			CurrentLevel% = 1
+			CALL InitField(CurrentLevel%, MaxCells%)
+			CALL DrawField
+			CALL DrawMessage("PRESS ESC TO EXIT")
+			CALL DrawStatusBar(1)
+			GameOver = FALSE
+		END IF
+	ELSE
+		GameStarted = TRUE
+		CALL DrawMessage("PRESS ESC TO EXIT")
+		CALL DrawStatusBar(1)
+	END IF
+END SUB
+
+SUB StartNextLevel (CurrentLevel%)
+	CALL InitField(CurrentLevel%, MaxCells%)
+	CALL DrawField
+	CALL DrawMessage("NEXT LEVEL! PRESS ESC TO EXIT")
+	FoodCount% = 0
+	CALL DrawStatusBar(CurrentLevel%)
 END SUB
 
 FUNCTION TRIM$ (Val$)
